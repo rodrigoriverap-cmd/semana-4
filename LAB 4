@@ -1,586 +1,511 @@
 using UnityEngine;
 public abstract class Entity : MonoBehaviour
 {
-protected BaseStats stats;
-public float Vida
-{
-get
-{
-return stats.vida;
+    protected BaseStats stats;
+
+    public float Health
+    {
+        get { return stats.health; }
+    }
+
+    public float MaxHealth
+    {
+        get { return stats.maxHealth; }
+    }
+
+    public float Damage
+    {
+        get { return stats.damage; }
+    }
+
+    public float Speed
+    {
+        get { return stats.speed; }
+    }
+
+    public abstract void TakeDamage(float amount, ElementType element);
+
+    public void Heal(float amount)
+    {
+        stats.Heal(amount);
+    }
 }
-}
-public float VidaMaxima
-{
-get
-{
-return stats.vidaMaxima;
-}
-}
-public float Daño
-{
-get
-{
-return stats.daño;
-}
-}
-public float Velocidad
-{
-get
-{
-return stats.velocidad;
-}
-}
-public abstract void TakeDamage(
-float cantidad,
-ElementType elemento
-);
-public void Curar(float cantidad)
-{
-stats.Curar(cantidad);
-}
-}
-(aparte)
+
+
+
+
+
 public enum ElementType
 {
-Fisico,
-Fuego,
-Hielo,
-Electricidad
+    Physical,
+    Fire,
+    Ice,
+    Electric
+}
+
+
+
+
+
+
 using UnityEngine;
 using UnityEngine.UI;
+
 public class GameUI : MonoBehaviour
 {
-public Player jugador;
-public Slider barraVida;
-public Text textoExperiencia;
-void Update()
-{
-if (jugador == null)
-{
-return;
+    public Player player;
+    public Slider healthBar;
+    public Text experienceText;
+
+    void Update()
+    {
+        if (player == null) return;
+
+        if (healthBar != null)
+        {
+            healthBar.value = player.Health / player.MaxHealth;
+        }
+
+        if (experienceText != null)
+        {
+            experienceText.text = "XP: " + player.experience;
+        }
+    }
 }
-if (barraVida != null)
-{
-barraVida.value =
-jugador.Vida /
-jugador.VidaMaxima;
-}
-if (textoExperiencia != null)
-{
-textoExperiencia.text =
-"XP: " +
-jugador.experiencia;
-}
-}
-}
+
+
+
+
+
+
+
 using UnityEngine;
+
 public class EnemySpawner : MonoBehaviour
 {
-public GameObject[] enemigos;
-public float intervalo = 2;
-public int cantidadMaxima = 20;
-private float contador = 0;
-void Update()
-{
-contador += Time.deltaTime;
-if (contador >= intervalo)
-{
-contador = 0;
-GenerarEnemigo();
+    public GameObject[] enemies;
+    public float interval = 2;
+    public int maxAmount = 20;
+
+    private float counter = 0;
+
+    void Update()
+    {
+        counter += Time.deltaTime;
+        if (counter >= interval)
+        {
+            counter = 0;
+            SpawnEnemy();
+        }
+    }
+
+    void SpawnEnemy()
+    {
+        if (enemies.Length == 0) return;
+
+        EnemyBase[] currentEnemies =
+            FindObjectsByType<EnemyBase>(FindObjectsSortMode.None);
+
+        if (currentEnemies.Length >= maxAmount) return;
+
+        int index = Random.Range(0, enemies.Length);
+        Vector2 pos = Random.insideUnitCircle * 6;
+
+        Instantiate(
+            enemies[index],
+            transform.position + new Vector3(pos.x, pos.y, 0),
+            Quaternion.identity
+        );
+    }
 }
-}
-void GenerarEnemigo()
-{
-if (enemigos.Length == 0)
-{
-return;
-}
-EnemyBase[] enemigosActuales =
-FindObjectsByType<EnemyBase>(
-FindObjectsSortMode.None
-);
-if (enemigosActuales.Length >= cantidadMaxima)
-{
-return;
-}
-int indice =
-Random.Range(
-0,
-enemigos.Length
-);
-Vector2 posicion =
-Random.insideUnitCircle * 6;
-Instantiate(
-enemigos[indice],
-transform.position +
-new Vector3(
-posicion.x,
-posicion.y,
-0
-),
-Quaternion.identity
-);
-}
-}
+
+
+
+
+
+
+
 using UnityEngine;
+
 public class Potion : Collectable
 {
-public float curacion = 30;
-public override void Recoger(Player jugador)
-{
-jugador.CurarJugador(
-curacion
-);
+    public float healAmount = 30;
+
+    public override void Collect(Player player)
+    {
+        player.HealPlayer(healAmount);
+    }
 }
-}
+
+
 
 
 
 
 using UnityEngine;
+
 public class XPOrb : Collectable
 {
-public float valorExperiencia = 10;
-public override void Recoger(Player jugador)
-{
-jugador.GanarExperiencia(
-valorExperiencia
-);
+    public float xpValue = 10;
+
+    public override void Collect(Player player)
+    {
+        player.GainExperience(xpValue);
+    }
 }
-}
-
-
-
-
+csharp
 using UnityEngine;
+
 public abstract class Collectable : MonoBehaviour
 {
-public abstract void Recoger(Player jugador);
-void OnTriggerEnter2D(Collider2D other)
-{
-Player jugador =
-other.GetComponent<Player>();
-if (jugador != null)
-{
-Recoger(jugador);
-Destroy(gameObject);
+    public abstract void Collect(Player player);
+
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        Player player = other.GetComponent<Player>();
+
+        if (player != null)
+        {
+            Collect(player);
+            Destroy(gameObject);
+        }
+    }
 }
-}
-}
+
+
+
+
+
+
+
+
 using UnityEngine;
+
 public class EnemyIce : EnemyBase
 {
-protected override void Awake()
-{
-stats = new BaseStats(
-40,
-40,
-10,
-2.5f
-);
-afinidadElemental =
-ElementType.Hielo;
-resistenciaElemental = -0.5f;
+    protected override void Awake()
+    {
+        stats = new BaseStats(40, 40, 10, 2.5f);
+        elementalAffinity = ElementType.Ice;
+        elementalResistance = -0.5f;
+    }
+
+    void Update()
+    {
+        Player player = FindFirstObjectByType<Player>();
+        if (player == null) return;
+
+        Vector3 dir = player.transform.position - transform.position;
+        transform.position += dir.normalized * stats.speed * Time.deltaTime;
+    }
 }
-void Update()
-{
-Player jugador =
-FindFirstObjectByType<Player>();
-if (jugador == null)
-{
-return;
-}
-Vector3 direccion =
-jugador.transform.position -
-transform.position;
-transform.position +=
-direccion.normalized *
-stats.velocidad *
-Time.deltaTime;
-}
-}
+
+
+
+
 
 
 
 
 using UnityEngine;
+
 public class EnemyFast : EnemyBase
 {
-protected override void Awake()
-{
-stats = new BaseStats(
-30,
-30,
-8,
-4
-);
-afinidadElemental =
-ElementType.Hielo;
+    protected override void Awake()
+    {
+        stats = new BaseStats(30, 30, 8, 4);
+        elementalAffinity = ElementType.Ice;
+    }
+
+    void Update()
+    {
+        Player player = FindFirstObjectByType<Player>();
+        if (player == null) return;
+
+        Vector3 dir = player.transform.position - transform.position;
+        transform.position += dir.normalized * stats.speed * Time.deltaTime;
+    }
 }
-void Update()
-{
-Player jugador =
-FindFirstObjectByType<Player>();
-if (jugador == null)
-{
-return;
-}
-Vector3 direccion =
-jugador.transform.position -
-transform.position;
-transform.position +=
-direccion.normalized *
-stats.velocidad *
-Time.deltaTime;
-}
-}
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
+
+
+
+
+
+
+
 using UnityEngine;
+
 public class EnemyMelee : EnemyBase
 {
-private Player jugador;
-protected override void Awake()
-{
-base.Awake();
-stats = new BaseStats(
-50,
-50,
-10,
-2f
-);
-afinidadElemental =
-ElementType.Fisico;
-resistenciaElemental = 0;
-dañoContacto = 10;
+    private Player player;
+
+    protected override void Awake()
+    {
+        base.Awake();
+        stats = new BaseStats(50, 50, 10, 2f);
+        elementalAffinity = ElementType.Physical;
+        elementalResistance = 0;
+        contactDamage = 10;
+    }
+
+    void Start()
+    {
+        player = FindFirstObjectByType<Player>();
+    }
+
+    void Update()
+    {
+        if (player == null) return;
+        MoveTowardPlayer();
+    }
+
+    void MoveTowardPlayer()
+    {
+        Vector3 dir = player.transform.position - transform.position;
+
+        if (dir != Vector3.zero)
+            dir.Normalize();
+
+        transform.position += dir * Speed * Time.deltaTime;
+    }
 }
-void Start()
-{
-jugador =
-FindFirstObjectByType<Player>();
-}
-void Update()
-{
-if (jugador == null)
-{
-return;
-}
-MoverHaciaJugador();
-}
-void MoverHaciaJugador()
-{
-Vector3 direccion =
-jugador.transform.position -
-transform.position;
-if (direccion != Vector3.zero)
-{
-direccion.Normalize();
-}
-transform.position +=
-direccion *
-Velocidad *
-Time.deltaTime;
-}
-}
+
+
+
+
+
+
 using UnityEngine;
+
 public class EnemyBase : Entity
 {
-public ElementType afinidadElemental =
-ElementType.Fisico;
-public float resistenciaElemental = 0;
-public float dañoContacto = 10;
-protected virtual void Awake()
-{
-stats = new BaseStats(
-50,
-50,
-10,
-2
-);
+    public ElementType elementalAffinity = ElementType.Physical;
+    public float elementalResistance = 0;
+    public float contactDamage = 10;
+
+    protected virtual void Awake()
+    {
+        stats = new BaseStats(50, 50, 10, 2);
+    }
+
+    public override void TakeDamage(float amount, ElementType element)
+    {
+        float finalDamage = amount;
+
+        if (element == elementalAffinity)
+        {
+            finalDamage = amount * (1f - elementalResistance);
+        }
+
+        stats.ReceiveDamage(finalDamage);
+
+        Debug.Log(gameObject.name + " received " + finalDamage + " damage.");
+
+        if (Health <= 0)
+        {
+            Die();
+        }
+    }
+
+    protected virtual void Die()
+    {
+        DropExperience();
+        Destroy(gameObject);
+    }
+
+    void DropExperience()
+    {
+        GameObject xp = new GameObject("XP");
+        xp.transform.position = transform.position;
+
+        XPOrb orb = xp.AddComponent<XPOrb>();
+        orb.xpValue = 10;
+    }
+
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        Player player = collision.gameObject.GetComponent<Player>();
+
+        if (player != null)
+        {
+            player.TakeDamage(contactDamage, ElementType.Physical);
+        }
+    }
 }
-public override void TakeDamage(
-float cantidad,
-ElementType elemento
-)
-{
-float dañoFinal = cantidad;
-if (elemento == afinidadElemental)
-{
-dañoFinal =
-cantidad * (1f - resistenciaElemental);
-}
-stats.RecibirDaño(dañoFinal);
-Debug.Log(
-gameObject.name +
-" recibió " +
-dañoFinal +
-" de daño."
-);
-if (Vida <= 0)
-{
-Morir();
-}
-}
-protected virtual void Morir()
-{
-SoltarExperiencia();
-Destroy(gameObject);
-}
-void SoltarExperiencia()
-{
-GameObject xp =
-new GameObject("XP");
-xp.transform.position =
-transform.position;
-XPOrb esfera =
-xp.AddComponent<XPOrb>();
-esfera.valorExperiencia = 10;
-}
-void OnCollisionEnter2D(Collision2D collision)
-{
-Player jugador =
-collision.gameObject.GetComponent<Player>();
-if (jugador != null)
-{
-jugador.TakeDamage(
-dañoContacto,
-ElementType.Fisico
-);
-}
-}
-}
+
+
 
 
 
 
 using UnityEngine;
+
 public class Player : Entity
 {
-[Header("Movimiento")]
-public float velocidadMovimiento = 5;
-[Header("Ataque automático")]
-public float intervaloAtaque = 1;
-public float rangoAtaque = 3;
-[Header("Elemento")]
-public ElementType elementoAtaque = ElementType.Fuego;
-[Header("Experiencia")]
-public float experiencia = 0;
-private float contadorAtaque = 0;
-private bool muerto = false;
-protected virtual void Awake()
-{
-stats = new BaseStats(
-100,
-100,
-25,
-velocidadMovimiento
-);
-}
-void Update()
-{
-if (muerto)
-{
-return;
-}
-Mover();
-AtaqueAutomatico();
-}
-void Mover()
-{
-float horizontal = 0;
-float vertical = 0;
-if (Input.GetKey(KeyCode.W))
-{
-vertical += 1;
-}
-if (Input.GetKey(KeyCode.S))
-{
-vertical -= 1;
-}
-if (Input.GetKey(KeyCode.A))
-{
-horizontal -= 1;
-}
-if (Input.GetKey(KeyCode.D))
-{
-horizontal += 1;
-}
-Vector3 movimiento = new Vector3(
-horizontal,
-vertical,
-0f
-);
-if (movimiento != Vector3.zero)
-{
-movimiento = movimiento.normalized;
-}
-transform.position +=
-movimiento *
-velocidadMovimiento *
-Time.deltaTime;
-}
-void AtaqueAutomatico()
-{
-contadorAtaque -= Time.deltaTime;
-if (contadorAtaque > 0)
-{
-return;
-}
-contadorAtaque = intervaloAtaque;
-Collider2D[] objetosDetectados =
-Physics2D.OverlapCircleAll(
-transform.position,
-rangoAtaque
-);
-foreach (Collider2D objeto in objetosDetectados)
-{
-EnemyBase enemigo =
-objeto.GetComponent<EnemyBase>();
-if (enemigo != null)
-{
-enemigo.TakeDamage(
-Daño,
-elementoAtaque
-);
-Debug.Log(
-"Player atacó a " +
-enemigo.gameObject.name +
-" con " +
-elementoAtaque
-);
-break;
-}
-}
-}
-public override void TakeDamage(
-float cantidad,
-ElementType elemento
-)
-{
-if (muerto)
-{
-return;
-}
-stats.RecibirDaño(cantidad);
-Debug.Log(
-"Player recibió " +
-cantidad +
-" de daño."
-);
-if (Vida <= 0)
-{
-Morir();
-}
-}
-public void GanarExperiencia(float cantidad)
-{
-experiencia += cantidad;
-Debug.Log(
-"Experiencia actual: " +
-experiencia
-);
-}
-public void CurarJugador(float cantidad)
-{
-if (muerto)
-{
-return;
-}
-Curar(cantidad);
-Debug.Log(
-"Player recuperó " +
-cantidad +
-" de vida."
-);
-}
-void Morir()
-{
-muerto = true;
-Debug.Log("GAME OVER");
-}
-public bool EstaMuerto()
-{
-return muerto;
-}
-void OnDrawGizmosSelected()
-{
-Gizmos.DrawWireSphere(
-transform.position,
-rangoAtaque
-);
-}
-}
+    [Header("Movement")]
+    public float moveSpeed = 5;
 
+    [Header("Auto Attack")]
+    public float attackInterval = 1;
+    public float attackRange = 3;
+
+    [Header("Element")]
+    public ElementType attackElement = ElementType.Fire;
+
+    [Header("Experience")]
+    public float experience = 0;
+
+    private float attackCounter = 0;
+    private bool dead = false;
+
+    protected virtual void Awake()
+    {
+        stats = new BaseStats(100, 100, 25, moveSpeed);
+    }
+
+    void Update()
+    {
+        if (dead) return;
+
+        Move();
+        AutoAttack();
+    }
+
+    void Move()
+    {
+        float h = 0;
+        float v = 0;
+
+        if (Input.GetKey(KeyCode.W)) v += 1;
+        if (Input.GetKey(KeyCode.S)) v -= 1;
+        if (Input.GetKey(KeyCode.A)) h -= 1;
+        if (Input.GetKey(KeyCode.D)) h += 1;
+
+        Vector3 movement = new Vector3(h, v, 0);
+
+        if (movement != Vector3.zero)
+            movement.Normalize();
+
+        transform.position += movement * moveSpeed * Time.deltaTime;
+    }
+
+    void AutoAttack()
+    {
+        attackCounter -= Time.deltaTime;
+        if (attackCounter > 0) return;
+
+        attackCounter = attackInterval;
+
+        Collider2D[] detected =
+            Physics2D.OverlapCircleAll(transform.position, attackRange);
+
+        foreach (Collider2D obj in detected)
+        {
+            EnemyBase enemy = obj.GetComponent<EnemyBase>();
+
+            if (enemy != null)
+            {
+                enemy.TakeDamage(Damage, attackElement);
+                Debug.Log("Player attacked " + enemy.gameObject.name + " with " + attackElement);
+                break;
+            }
+        }
+    }
+
+    public override void TakeDamage(float amount, ElementType element)
+    {
+        if (dead) return;
+
+        stats.ReceiveDamage(amount);
+        Debug.Log("Player received " + amount + " damage.");
+
+        if (Health <= 0)
+        {
+            Die();
+        }
+    }
+
+    public void GainExperience(float amount)
+    {
+        experience += amount;
+        Debug.Log("Current XP: " + experience);
+    }
+
+    public void HealPlayer(float amount)
+    {
+        if (dead) return;
+
+        Heal(amount);
+        Debug.Log("Player recovered " + amount + " health.");
+    }
+
+    void Die()
+    {
+        dead = true;
+        Debug.Log("GAME OVER");
+    }
+
+    public bool IsDead()
+    {
+        return dead;
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.DrawWireSphere(transform.position, attackRange);
+    }
+}
 
 
 
 
 using UnityEngine;
+
 public class EnemyFire : EnemyBase
 {
-protected override void Awake()
-{
-stats = new BaseStats(
-80,
-80,
-12,
-1.5f
-);
-afinidadElemental =
-ElementType.Fuego;
-resistenciaElemental = 0.5f;
-}
-void Update()
-{
-Player jugador =
-FindFirstObjectByType<Player>();
-if (jugador == null)
-{
-return;
-}
-Vector3 direccion =
-jugador.transform.position -
-transform.position;
-transform.position +=
-direccion.normalized *
-stats.velocidad *
-Time.deltaTime;
-}
-}
+    protected override void Awake()
+    {
+        stats = new BaseStats(80, 80, 12, 1.5f);
+        elementalAffinity = ElementType.Fire;
+        elementalResistance = 0.5f;
+    }
 
+    void Update()
+    {
+        Player player = FindFirstObjectByType<Player>();
+        if (player == null) return;
+
+        Vector3 dir = player.transform.position - transform.position;
+        transform.position += dir.normalized * stats.speed * Time.deltaTime;
+    }
+}
 
 
 
 public class BaseStats
 {
-public float vida;
-public float vidaMaxima;
-public float daño;
-public float velocidad;
-public BaseStats(
-float vida,
-float vidaMaxima,
-float daño,
-float velocidad)
-{
-this.vida = vida;
-this.vidaMaxima = vidaMaxima;
-this.daño = daño;
-this.velocidad = velocidad;
-}
-public void RecibirDaño(float cantidad)
-{
-vida -= cantidad;
-if (vida < 0)
-{
-vida = 0;
-}
-}
-public void Curar(float cantidad)
-{
-vida += cantidad;
-if (vida > vidaMaxima)
-{
-vida = vidaMaxima;
-}
-}
+    public float health;
+    public float maxHealth;
+    public float damage;
+    public float speed;
+
+    public BaseStats(float health, float maxHealth, float damage, float speed)
+    {
+        this.health = health;
+        this.maxHealth = maxHealth;
+        this.damage = damage;
+        this.speed = speed;
+    }
+
+    public void ReceiveDamage(float amount)
+    {
+        health -= amount;
+        if (health < 0) health = 0;
+    }
+
+    public void Heal(float amount)
+    {
+        health += amount;
+        if (health > maxHealth) health = maxHealth;
+    }
 }
