@@ -1,0 +1,586 @@
+using UnityEngine;
+public abstract class Entity : MonoBehaviour
+{
+protected BaseStats stats;
+public float Vida
+{
+get
+{
+return stats.vida;
+}
+}
+public float VidaMaxima
+{
+get
+{
+return stats.vidaMaxima;
+}
+}
+public float Daño
+{
+get
+{
+return stats.daño;
+}
+}
+public float Velocidad
+{
+get
+{
+return stats.velocidad;
+}
+}
+public abstract void TakeDamage(
+float cantidad,
+ElementType elemento
+);
+public void Curar(float cantidad)
+{
+stats.Curar(cantidad);
+}
+}
+(aparte)
+public enum ElementType
+{
+Fisico,
+Fuego,
+Hielo,
+Electricidad
+using UnityEngine;
+using UnityEngine.UI;
+public class GameUI : MonoBehaviour
+{
+public Player jugador;
+public Slider barraVida;
+public Text textoExperiencia;
+void Update()
+{
+if (jugador == null)
+{
+return;
+}
+if (barraVida != null)
+{
+barraVida.value =
+jugador.Vida /
+jugador.VidaMaxima;
+}
+if (textoExperiencia != null)
+{
+textoExperiencia.text =
+"XP: " +
+jugador.experiencia;
+}
+}
+}
+using UnityEngine;
+public class EnemySpawner : MonoBehaviour
+{
+public GameObject[] enemigos;
+public float intervalo = 2;
+public int cantidadMaxima = 20;
+private float contador = 0;
+void Update()
+{
+contador += Time.deltaTime;
+if (contador >= intervalo)
+{
+contador = 0;
+GenerarEnemigo();
+}
+}
+void GenerarEnemigo()
+{
+if (enemigos.Length == 0)
+{
+return;
+}
+EnemyBase[] enemigosActuales =
+FindObjectsByType<EnemyBase>(
+FindObjectsSortMode.None
+);
+if (enemigosActuales.Length >= cantidadMaxima)
+{
+return;
+}
+int indice =
+Random.Range(
+0,
+enemigos.Length
+);
+Vector2 posicion =
+Random.insideUnitCircle * 6;
+Instantiate(
+enemigos[indice],
+transform.position +
+new Vector3(
+posicion.x,
+posicion.y,
+0
+),
+Quaternion.identity
+);
+}
+}
+using UnityEngine;
+public class Potion : Collectable
+{
+public float curacion = 30;
+public override void Recoger(Player jugador)
+{
+jugador.CurarJugador(
+curacion
+);
+}
+}
+
+
+
+
+using UnityEngine;
+public class XPOrb : Collectable
+{
+public float valorExperiencia = 10;
+public override void Recoger(Player jugador)
+{
+jugador.GanarExperiencia(
+valorExperiencia
+);
+}
+}
+
+
+
+
+using UnityEngine;
+public abstract class Collectable : MonoBehaviour
+{
+public abstract void Recoger(Player jugador);
+void OnTriggerEnter2D(Collider2D other)
+{
+Player jugador =
+other.GetComponent<Player>();
+if (jugador != null)
+{
+Recoger(jugador);
+Destroy(gameObject);
+}
+}
+}
+using UnityEngine;
+public class EnemyIce : EnemyBase
+{
+protected override void Awake()
+{
+stats = new BaseStats(
+40,
+40,
+10,
+2.5f
+);
+afinidadElemental =
+ElementType.Hielo;
+resistenciaElemental = -0.5f;
+}
+void Update()
+{
+Player jugador =
+FindFirstObjectByType<Player>();
+if (jugador == null)
+{
+return;
+}
+Vector3 direccion =
+jugador.transform.position -
+transform.position;
+transform.position +=
+direccion.normalized *
+stats.velocidad *
+Time.deltaTime;
+}
+}
+
+
+
+
+using UnityEngine;
+public class EnemyFast : EnemyBase
+{
+protected override void Awake()
+{
+stats = new BaseStats(
+30,
+30,
+8,
+4
+);
+afinidadElemental =
+ElementType.Hielo;
+}
+void Update()
+{
+Player jugador =
+FindFirstObjectByType<Player>();
+if (jugador == null)
+{
+return;
+}
+Vector3 direccion =
+jugador.transform.position -
+transform.position;
+transform.position +=
+direccion.normalized *
+stats.velocidad *
+Time.deltaTime;
+}
+}
+using Unity.VisualScripting.Antlr3.Runtime.Misc;
+using UnityEngine;
+public class EnemyMelee : EnemyBase
+{
+private Player jugador;
+protected override void Awake()
+{
+base.Awake();
+stats = new BaseStats(
+50,
+50,
+10,
+2f
+);
+afinidadElemental =
+ElementType.Fisico;
+resistenciaElemental = 0;
+dañoContacto = 10;
+}
+void Start()
+{
+jugador =
+FindFirstObjectByType<Player>();
+}
+void Update()
+{
+if (jugador == null)
+{
+return;
+}
+MoverHaciaJugador();
+}
+void MoverHaciaJugador()
+{
+Vector3 direccion =
+jugador.transform.position -
+transform.position;
+if (direccion != Vector3.zero)
+{
+direccion.Normalize();
+}
+transform.position +=
+direccion *
+Velocidad *
+Time.deltaTime;
+}
+}
+using UnityEngine;
+public class EnemyBase : Entity
+{
+public ElementType afinidadElemental =
+ElementType.Fisico;
+public float resistenciaElemental = 0;
+public float dañoContacto = 10;
+protected virtual void Awake()
+{
+stats = new BaseStats(
+50,
+50,
+10,
+2
+);
+}
+public override void TakeDamage(
+float cantidad,
+ElementType elemento
+)
+{
+float dañoFinal = cantidad;
+if (elemento == afinidadElemental)
+{
+dañoFinal =
+cantidad * (1f - resistenciaElemental);
+}
+stats.RecibirDaño(dañoFinal);
+Debug.Log(
+gameObject.name +
+" recibió " +
+dañoFinal +
+" de daño."
+);
+if (Vida <= 0)
+{
+Morir();
+}
+}
+protected virtual void Morir()
+{
+SoltarExperiencia();
+Destroy(gameObject);
+}
+void SoltarExperiencia()
+{
+GameObject xp =
+new GameObject("XP");
+xp.transform.position =
+transform.position;
+XPOrb esfera =
+xp.AddComponent<XPOrb>();
+esfera.valorExperiencia = 10;
+}
+void OnCollisionEnter2D(Collision2D collision)
+{
+Player jugador =
+collision.gameObject.GetComponent<Player>();
+if (jugador != null)
+{
+jugador.TakeDamage(
+dañoContacto,
+ElementType.Fisico
+);
+}
+}
+}
+
+
+
+
+using UnityEngine;
+public class Player : Entity
+{
+[Header("Movimiento")]
+public float velocidadMovimiento = 5;
+[Header("Ataque automático")]
+public float intervaloAtaque = 1;
+public float rangoAtaque = 3;
+[Header("Elemento")]
+public ElementType elementoAtaque = ElementType.Fuego;
+[Header("Experiencia")]
+public float experiencia = 0;
+private float contadorAtaque = 0;
+private bool muerto = false;
+protected virtual void Awake()
+{
+stats = new BaseStats(
+100,
+100,
+25,
+velocidadMovimiento
+);
+}
+void Update()
+{
+if (muerto)
+{
+return;
+}
+Mover();
+AtaqueAutomatico();
+}
+void Mover()
+{
+float horizontal = 0;
+float vertical = 0;
+if (Input.GetKey(KeyCode.W))
+{
+vertical += 1;
+}
+if (Input.GetKey(KeyCode.S))
+{
+vertical -= 1;
+}
+if (Input.GetKey(KeyCode.A))
+{
+horizontal -= 1;
+}
+if (Input.GetKey(KeyCode.D))
+{
+horizontal += 1;
+}
+Vector3 movimiento = new Vector3(
+horizontal,
+vertical,
+0f
+);
+if (movimiento != Vector3.zero)
+{
+movimiento = movimiento.normalized;
+}
+transform.position +=
+movimiento *
+velocidadMovimiento *
+Time.deltaTime;
+}
+void AtaqueAutomatico()
+{
+contadorAtaque -= Time.deltaTime;
+if (contadorAtaque > 0)
+{
+return;
+}
+contadorAtaque = intervaloAtaque;
+Collider2D[] objetosDetectados =
+Physics2D.OverlapCircleAll(
+transform.position,
+rangoAtaque
+);
+foreach (Collider2D objeto in objetosDetectados)
+{
+EnemyBase enemigo =
+objeto.GetComponent<EnemyBase>();
+if (enemigo != null)
+{
+enemigo.TakeDamage(
+Daño,
+elementoAtaque
+);
+Debug.Log(
+"Player atacó a " +
+enemigo.gameObject.name +
+" con " +
+elementoAtaque
+);
+break;
+}
+}
+}
+public override void TakeDamage(
+float cantidad,
+ElementType elemento
+)
+{
+if (muerto)
+{
+return;
+}
+stats.RecibirDaño(cantidad);
+Debug.Log(
+"Player recibió " +
+cantidad +
+" de daño."
+);
+if (Vida <= 0)
+{
+Morir();
+}
+}
+public void GanarExperiencia(float cantidad)
+{
+experiencia += cantidad;
+Debug.Log(
+"Experiencia actual: " +
+experiencia
+);
+}
+public void CurarJugador(float cantidad)
+{
+if (muerto)
+{
+return;
+}
+Curar(cantidad);
+Debug.Log(
+"Player recuperó " +
+cantidad +
+" de vida."
+);
+}
+void Morir()
+{
+muerto = true;
+Debug.Log("GAME OVER");
+}
+public bool EstaMuerto()
+{
+return muerto;
+}
+void OnDrawGizmosSelected()
+{
+Gizmos.DrawWireSphere(
+transform.position,
+rangoAtaque
+);
+}
+}
+
+
+
+
+
+using UnityEngine;
+public class EnemyFire : EnemyBase
+{
+protected override void Awake()
+{
+stats = new BaseStats(
+80,
+80,
+12,
+1.5f
+);
+afinidadElemental =
+ElementType.Fuego;
+resistenciaElemental = 0.5f;
+}
+void Update()
+{
+Player jugador =
+FindFirstObjectByType<Player>();
+if (jugador == null)
+{
+return;
+}
+Vector3 direccion =
+jugador.transform.position -
+transform.position;
+transform.position +=
+direccion.normalized *
+stats.velocidad *
+Time.deltaTime;
+}
+}
+
+
+
+
+public class BaseStats
+{
+public float vida;
+public float vidaMaxima;
+public float daño;
+public float velocidad;
+public BaseStats(
+float vida,
+float vidaMaxima,
+float daño,
+float velocidad)
+{
+this.vida = vida;
+this.vidaMaxima = vidaMaxima;
+this.daño = daño;
+this.velocidad = velocidad;
+}
+public void RecibirDaño(float cantidad)
+{
+vida -= cantidad;
+if (vida < 0)
+{
+vida = 0;
+}
+}
+public void Curar(float cantidad)
+{
+vida += cantidad;
+if (vida > vidaMaxima)
+{
+vida = vidaMaxima;
+}
+}
+}
